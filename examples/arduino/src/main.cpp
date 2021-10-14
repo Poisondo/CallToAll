@@ -69,6 +69,8 @@ const char apn[] = "m.tinkoff.";
 const char gprsUser[] = "";
 const char gprsPass[] = "";
 
+const char ToneServerIP = "";
+
 // MQTT details
 const char *broker = "";
 

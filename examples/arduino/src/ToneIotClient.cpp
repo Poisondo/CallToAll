@@ -1,183 +1,159 @@
 /**
     * @author Dyakonov Oleg <o.u.dyakonov@gmail.com>
     * 
-    * @brief TOneClient.cpp
+    * @brief ToneIotClient
 */
 
-#include "TOneClient.h"
+#include "ToneIotClient.h"
 #include "Arduino.h"
 
-PubSubClient::PubSubClient() {
-    this->_state = MQTT_DISCONNECTED;
+#include "ToneIotSettings.h"
+
+// Constructor
+ToneIotClient::ToneIotClient() {
+    this->_state = TOIC_DISCONNECTED;
+    setServer();
     this->_client = NULL;
     this->stream = NULL;
     setCallback(NULL);
     this->bufferSize = 0;
-    setBufferSize(MQTT_MAX_PACKET_SIZE);
-    setKeepAlive(MQTT_KEEPALIVE);
-    setSocketTimeout(MQTT_SOCKET_TIMEOUT);
+    setBufferSize(TOIC_MAX_PACKET_SIZE);
+    setKeepAlive(TOIC_KEEPALIVE);
+    setSocketTimeout(TOIC_SOCKET_TIMEOUT);
 }
 
-PubSubClient::PubSubClient(Client& client) {
-    this->_state = MQTT_DISCONNECTED;
+ToneIotClient::ToneIotClient(Client& client) {
+    this->_state = TOIC_DISCONNECTED;
+    setServer();
     setClient(client);
     this->stream = NULL;
     this->bufferSize = 0;
-    setBufferSize(MQTT_MAX_PACKET_SIZE);
-    setKeepAlive(MQTT_KEEPALIVE);
-    setSocketTimeout(MQTT_SOCKET_TIMEOUT);
+    setBufferSize(TOIC_MAX_PACKET_SIZE);
+    setKeepAlive(TOIC_KEEPALIVE);
+    setSocketTimeout(TOIC_SOCKET_TIMEOUT);
 }
 
-PubSubClient::PubSubClient(IPAddress addr, uint16_t port, Client& client) {
-    this->_state = MQTT_DISCONNECTED;
-    setServer(addr, port);
-    setClient(client);
-    this->stream = NULL;
-    this->bufferSize = 0;
-    setBufferSize(MQTT_MAX_PACKET_SIZE);
-    setKeepAlive(MQTT_KEEPALIVE);
-    setSocketTimeout(MQTT_SOCKET_TIMEOUT);
-}
-PubSubClient::PubSubClient(IPAddress addr, uint16_t port, Client& client, Stream& stream) {
-    this->_state = MQTT_DISCONNECTED;
-    setServer(addr,port);
+ToneIotClient::ToneIotClient(Client& client, Stream& stream) {
+    this->_state = TOIC_DISCONNECTED;
+    setServer();
     setClient(client);
     setStream(stream);
     this->bufferSize = 0;
-    setBufferSize(MQTT_MAX_PACKET_SIZE);
-    setKeepAlive(MQTT_KEEPALIVE);
-    setSocketTimeout(MQTT_SOCKET_TIMEOUT);
+    setBufferSize(TOIC_MAX_PACKET_SIZE);
+    setKeepAlive(TOIC_KEEPALIVE);
+    setSocketTimeout(TOIC_SOCKET_TIMEOUT);
 }
-PubSubClient::PubSubClient(IPAddress addr, uint16_t port, MQTT_CALLBACK_SIGNATURE, Client& client) {
-    this->_state = MQTT_DISCONNECTED;
-    setServer(addr, port);
+ToneIotClient::ToneIotClient(Client& client, TOIC_CALLBACK_SIGNATURE) {
+    this->_state = TOIC_DISCONNECTED;
+    setServer();
     setCallback(callback);
     setClient(client);
     this->stream = NULL;
     this->bufferSize = 0;
-    setBufferSize(MQTT_MAX_PACKET_SIZE);
-    setKeepAlive(MQTT_KEEPALIVE);
-    setSocketTimeout(MQTT_SOCKET_TIMEOUT);
+    setBufferSize(TOIC_MAX_PACKET_SIZE);
+    setKeepAlive(TOIC_KEEPALIVE);
+    setSocketTimeout(TOIC_SOCKET_TIMEOUT);
 }
-PubSubClient::PubSubClient(IPAddress addr, uint16_t port, MQTT_CALLBACK_SIGNATURE, Client& client, Stream& stream) {
-    this->_state = MQTT_DISCONNECTED;
-    setServer(addr,port);
+ToneIotClient::ToneIotClient(Client& client, Stream& stream, TOIC_CALLBACK_SIGNATURE) {
+    this->_state = TOIC_DISCONNECTED;
+    setServer();
     setCallback(callback);
     setClient(client);
     setStream(stream);
     this->bufferSize = 0;
-    setBufferSize(MQTT_MAX_PACKET_SIZE);
-    setKeepAlive(MQTT_KEEPALIVE);
-    setSocketTimeout(MQTT_SOCKET_TIMEOUT);
+    setBufferSize(TOIC_MAX_PACKET_SIZE);
+    setKeepAlive(TOIC_KEEPALIVE);
+    setSocketTimeout(TOIC_SOCKET_TIMEOUT);
 }
 
-PubSubClient::PubSubClient(uint8_t *ip, uint16_t port, Client& client) {
-    this->_state = MQTT_DISCONNECTED;
-    setServer(ip, port);
-    setClient(client);
-    this->stream = NULL;
-    this->bufferSize = 0;
-    setBufferSize(MQTT_MAX_PACKET_SIZE);
-    setKeepAlive(MQTT_KEEPALIVE);
-    setSocketTimeout(MQTT_SOCKET_TIMEOUT);
-}
-PubSubClient::PubSubClient(uint8_t *ip, uint16_t port, Client& client, Stream& stream) {
-    this->_state = MQTT_DISCONNECTED;
-    setServer(ip,port);
-    setClient(client);
-    setStream(stream);
-    this->bufferSize = 0;
-    setBufferSize(MQTT_MAX_PACKET_SIZE);
-    setKeepAlive(MQTT_KEEPALIVE);
-    setSocketTimeout(MQTT_SOCKET_TIMEOUT);
-}
-PubSubClient::PubSubClient(uint8_t *ip, uint16_t port, MQTT_CALLBACK_SIGNATURE, Client& client) {
-    this->_state = MQTT_DISCONNECTED;
-    setServer(ip, port);
-    setCallback(callback);
-    setClient(client);
-    this->stream = NULL;
-    this->bufferSize = 0;
-    setBufferSize(MQTT_MAX_PACKET_SIZE);
-    setKeepAlive(MQTT_KEEPALIVE);
-    setSocketTimeout(MQTT_SOCKET_TIMEOUT);
-}
-PubSubClient::PubSubClient(uint8_t *ip, uint16_t port, MQTT_CALLBACK_SIGNATURE, Client& client, Stream& stream) {
-    this->_state = MQTT_DISCONNECTED;
-    setServer(ip,port);
-    setCallback(callback);
-    setClient(client);
-    setStream(stream);
-    this->bufferSize = 0;
-    setBufferSize(MQTT_MAX_PACKET_SIZE);
-    setKeepAlive(MQTT_KEEPALIVE);
-    setSocketTimeout(MQTT_SOCKET_TIMEOUT);
-}
-
-PubSubClient::PubSubClient(const char* domain, uint16_t port, Client& client) {
-    this->_state = MQTT_DISCONNECTED;
-    setServer(domain,port);
-    setClient(client);
-    this->stream = NULL;
-    this->bufferSize = 0;
-    setBufferSize(MQTT_MAX_PACKET_SIZE);
-    setKeepAlive(MQTT_KEEPALIVE);
-    setSocketTimeout(MQTT_SOCKET_TIMEOUT);
-}
-PubSubClient::PubSubClient(const char* domain, uint16_t port, Client& client, Stream& stream) {
-    this->_state = MQTT_DISCONNECTED;
-    setServer(domain,port);
-    setClient(client);
-    setStream(stream);
-    this->bufferSize = 0;
-    setBufferSize(MQTT_MAX_PACKET_SIZE);
-    setKeepAlive(MQTT_KEEPALIVE);
-    setSocketTimeout(MQTT_SOCKET_TIMEOUT);
-}
-PubSubClient::PubSubClient(const char* domain, uint16_t port, MQTT_CALLBACK_SIGNATURE, Client& client) {
-    this->_state = MQTT_DISCONNECTED;
-    setServer(domain,port);
-    setCallback(callback);
-    setClient(client);
-    this->stream = NULL;
-    this->bufferSize = 0;
-    setBufferSize(MQTT_MAX_PACKET_SIZE);
-    setKeepAlive(MQTT_KEEPALIVE);
-    setSocketTimeout(MQTT_SOCKET_TIMEOUT);
-}
-PubSubClient::PubSubClient(const char* domain, uint16_t port, MQTT_CALLBACK_SIGNATURE, Client& client, Stream& stream) {
-    this->_state = MQTT_DISCONNECTED;
-    setServer(domain,port);
-    setCallback(callback);
-    setClient(client);
-    setStream(stream);
-    this->bufferSize = 0;
-    setBufferSize(MQTT_MAX_PACKET_SIZE);
-    setKeepAlive(MQTT_KEEPALIVE);
-    setSocketTimeout(MQTT_SOCKET_TIMEOUT);
-}
-
-PubSubClient::~PubSubClient() {
+ToneIotClient::~ToneIotClient() {
   free(this->buffer);
 }
 
-boolean PubSubClient::connect(const char *id) {
-    return connect(id,NULL,NULL,0,0,0,0,1);
+ToneIotClient& ToneIotClient::setServer() {
+    #ifdef TOIC_CONNECT_DOMAIN 
+        return setServer(TOIC_CONNECT_DOMAIN, TOIC_CONNECT_PORT);
+    #elif TOIC_CONNECT_IP
+        uint8_t ip[4] = TOIC_CONNECT_IP;
+        IPAddress addr(ip[0],ip[1],ip[2],ip[3]);
+        return setServer(addr,TOIC_CONNECT_PORT);
+    #endif
 }
 
-boolean PubSubClient::connect(const char *id, const char *user, const char *pass) {
-    return connect(id,user,pass,0,0,0,0,1);
+ToneIotClient& ToneIotClient::setServer(uint8_t * ip, uint16_t port) {
+    IPAddress addr(ip[0],ip[1],ip[2],ip[3]);
+    return setServer(addr,port);
 }
 
-boolean PubSubClient::connect(const char *id, const char* willTopic, uint8_t willQos, boolean willRetain, const char* willMessage) {
-    return connect(id,NULL,NULL,willTopic,willQos,willRetain,willMessage,1);
+ToneIotClient& ToneIotClient::setServer(IPAddress ip, uint16_t port) {
+    this->ip = ip;
+    this->port = port;
+    this->domain = NULL;
+    return *this;
 }
 
-boolean PubSubClient::connect(const char *id, const char *user, const char *pass, const char* willTopic, uint8_t willQos, boolean willRetain, const char* willMessage) {
-    return connect(id,user,pass,willTopic,willQos,willRetain,willMessage,1);
+ToneIotClient& ToneIotClient::setServer(const char * domain, uint16_t port) {
+    this->domain = domain;
+    this->port = port;
+    return *this;
 }
 
-boolean PubSubClient::connect(const char *id, const char *user, const char *pass, const char* willTopic, uint8_t willQos, boolean willRetain, const char* willMessage, boolean cleanSession) {
+ToneIotClient& ToneIotClient::setCallback(TOIC_CALLBACK_SIGNATURE) {
+    this->callback = callback;
+    return *this;
+}
+
+ToneIotClient& ToneIotClient::setClient(Client& client){
+    this->_client = &client;
+    return *this;
+}
+
+ToneIotClient& ToneIotClient::setStream(Stream& stream){
+    this->stream = &stream;
+    return *this;
+}
+
+int ToneIotClient::state() {
+    return this->_state;
+}
+
+boolean ToneIotClient::setBufferSize(uint16_t size) {
+    if (size == 0) {
+        // Cannot set it back to 0
+        return false;
+    }
+    if (this->bufferSize == 0) {
+        this->buffer = (uint8_t*)malloc(size);
+    } else {
+        uint8_t* newBuffer = (uint8_t*)realloc(this->buffer, size);
+        if (newBuffer != NULL) {
+            this->buffer = newBuffer;
+        } else {
+            return false;
+        }
+    }
+    this->bufferSize = size;
+    return (this->buffer != NULL);
+}
+
+uint16_t ToneIotClient::getBufferSize() {
+    return this->bufferSize;
+}
+ToneIotClient& ToneIotClient::setKeepAlive(uint16_t keepAlive) {
+    this->keepAlive = keepAlive;
+    return *this;
+}
+ToneIotClient& ToneIotClient::setSocketTimeout(uint16_t timeout) {
+    this->socketTimeout = timeout;
+    return *this;
+}
+
+
+boolean ToneIotClient::connect(const char *id) {
+    return connect(id, TONE_TOKEN);
+}
+
+boolean ToneIotClient::connect(const char *id, const char *token) {
     if (!connected()) {
         int result = 0;
 
@@ -193,70 +169,34 @@ boolean PubSubClient::connect(const char *id, const char *user, const char *pass
         }
 
         if (result == 1) {
-            nextMsgId = 1;
+
+
+            //nextMsgId = 1;
             // Leave room in the buffer for header and variable length field
-            uint16_t length = MQTT_MAX_HEADER_SIZE;
-            unsigned int j;
+            uint16_t length = 0;
+            unsigned int j = 0;
 
-#if MQTT_VERSION == MQTT_VERSION_3_1
-            uint8_t d[9] = {0x00,0x06,'M','Q','I','s','d','p', MQTT_VERSION};
-#define MQTT_HEADER_VERSION_LENGTH 9
-#elif MQTT_VERSION == MQTT_VERSION_3_1_1
-            uint8_t d[7] = {0x00,0x04,'M','Q','T','T',MQTT_VERSION};
-#define MQTT_HEADER_VERSION_LENGTH 7
-#endif
-            for (j = 0;j<MQTT_HEADER_VERSION_LENGTH;j++) {
-                this->buffer[length++] = d[j];
+            while(token[j]){
+                this->buffer[length++] = token[j];
+                j++;
             }
 
-            uint8_t v;
-            if (willTopic) {
-                v = 0x04|(willQos<<3)|(willRetain<<5);
-            } else {
-                v = 0x00;
-            }
-            if (cleanSession) {
-                v = v|0x02;
-            }
-
-            if(user != NULL) {
-                v = v|0x80;
-
-                if(pass != NULL) {
-                    v = v|(0x80>>1);
-                }
-            }
-            this->buffer[length++] = v;
 
             this->buffer[length++] = ((this->keepAlive) >> 8);
             this->buffer[length++] = ((this->keepAlive) & 0xFF);
 
             CHECK_STRING_LENGTH(length,id)
             length = writeString(id,this->buffer,length);
-            if (willTopic) {
-                CHECK_STRING_LENGTH(length,willTopic)
-                length = writeString(willTopic,this->buffer,length);
-                CHECK_STRING_LENGTH(length,willMessage)
-                length = writeString(willMessage,this->buffer,length);
-            }
 
-            if(user != NULL) {
-                CHECK_STRING_LENGTH(length,user)
-                length = writeString(user,this->buffer,length);
-                if(pass != NULL) {
-                    CHECK_STRING_LENGTH(length,pass)
-                    length = writeString(pass,this->buffer,length);
-                }
-            }
 
-            write(MQTTCONNECT,this->buffer,length-MQTT_MAX_HEADER_SIZE);
+            write(TOICCONNECT,this->buffer,length);
 
             lastInActivity = lastOutActivity = millis();
 
             while (!_client->available()) {
                 unsigned long t = millis();
                 if (t-lastInActivity >= ((int32_t) this->socketTimeout*1000UL)) {
-                    _state = MQTT_CONNECTION_TIMEOUT;
+                    _state = TOIC_CONNECTION_TIMEOUT;
                     _client->stop();
                     return false;
                 }
@@ -268,7 +208,7 @@ boolean PubSubClient::connect(const char *id, const char *user, const char *pass
                 if (buffer[3] == 0) {
                     lastInActivity = millis();
                     pingOutstanding = false;
-                    _state = MQTT_CONNECTED;
+                    _state = TOIC_CONNECTED;
                     return true;
                 } else {
                     _state = buffer[3];
@@ -276,7 +216,7 @@ boolean PubSubClient::connect(const char *id, const char *user, const char *pass
             }
             _client->stop();
         } else {
-            _state = MQTT_CONNECT_FAILED;
+            _state = TOIC_CONNECT_FAILED;
         }
         return false;
     }
@@ -284,7 +224,7 @@ boolean PubSubClient::connect(const char *id, const char *user, const char *pass
 }
 
 // reads a byte into result
-boolean PubSubClient::readByte(uint8_t * result) {
+boolean ToneIotClient::readByte(uint8_t * result) {
    uint32_t previousMillis = millis();
    while(!_client->available()) {
      yield();
@@ -298,7 +238,7 @@ boolean PubSubClient::readByte(uint8_t * result) {
 }
 
 // reads a byte into result[*index] and increments index
-boolean PubSubClient::readByte(uint8_t * result, uint16_t * index){
+boolean ToneIotClient::readByte(uint8_t * result, uint16_t * index){
   uint16_t current_index = *index;
   uint8_t * write_address = &(result[current_index]);
   if(readByte(write_address)){
@@ -308,74 +248,75 @@ boolean PubSubClient::readByte(uint8_t * result, uint16_t * index){
   return false;
 }
 
-uint32_t PubSubClient::readPacket(uint8_t* lengthLength) {
-    uint16_t len = 0;
-    if(!readByte(this->buffer, &len)) return 0;
-    bool isPublish = (this->buffer[0]&0xF0) == MQTTPUBLISH;
-    uint32_t multiplier = 1;
-    uint32_t length = 0;
-    uint8_t digit = 0;
-    uint16_t skip = 0;
-    uint32_t start = 0;
 
-    do {
-        if (len == 5) {
-            // Invalid remaining length encoding - kill the connection
-            _state = MQTT_DISCONNECTED;
-            _client->stop();
-            return 0;
-        }
-        if(!readByte(&digit)) return 0;
-        this->buffer[len++] = digit;
-        length += (digit & 127) * multiplier;
-        multiplier <<=7; //multiplier *= 128
-    } while ((digit & 128) != 0);
-    *lengthLength = len-1;
+// uint32_t ToneIotClient::readPacket(uint8_t* lengthLength) {
+//     uint16_t len = 0;
+//     if(!readByte(this->buffer, &len)) return 0;
+//     bool isPublish = (this->buffer[0]&0xF0) == MQTTPUBLISH;
+//     uint32_t multiplier = 1;
+//     uint32_t length = 0;
+//     uint8_t digit = 0;
+//     uint16_t skip = 0;
+//     uint32_t start = 0;
 
-    if (isPublish) {
-        // Read in topic length to calculate bytes to skip over for Stream writing
-        if(!readByte(this->buffer, &len)) return 0;
-        if(!readByte(this->buffer, &len)) return 0;
-        skip = (this->buffer[*lengthLength+1]<<8)+this->buffer[*lengthLength+2];
-        start = 2;
-        if (this->buffer[0]&MQTTQOS1) {
-            // skip message id
-            skip += 2;
-        }
-    }
-    uint32_t idx = len;
+//     do {
+//         if (len == 5) {
+//             // Invalid remaining length encoding - kill the connection
+//             _state = MQTT_DISCONNECTED;
+//             _client->stop();
+//             return 0;
+//         }
+//         if(!readByte(&digit)) return 0;
+//         this->buffer[len++] = digit;
+//         length += (digit & 127) * multiplier;
+//         multiplier <<=7; //multiplier *= 128
+//     } while ((digit & 128) != 0);
+//     *lengthLength = len-1;
 
-    for (uint32_t i = start;i<length;i++) {
-        if(!readByte(&digit)) return 0;
-        if (this->stream) {
-            if (isPublish && idx-*lengthLength-2>skip) {
-                this->stream->write(digit);
-            }
-        }
+//     if (isPublish) {
+//         // Read in topic length to calculate bytes to skip over for Stream writing
+//         if(!readByte(this->buffer, &len)) return 0;
+//         if(!readByte(this->buffer, &len)) return 0;
+//         skip = (this->buffer[*lengthLength+1]<<8)+this->buffer[*lengthLength+2];
+//         start = 2;
+//         if (this->buffer[0]&MQTTQOS1) {
+//             // skip message id
+//             skip += 2;
+//         }
+//     }
+//     uint32_t idx = len;
 
-        if (len < this->bufferSize) {
-            this->buffer[len] = digit;
-            len++;
-        }
-        idx++;
-    }
+//     for (uint32_t i = start;i<length;i++) {
+//         if(!readByte(&digit)) return 0;
+//         if (this->stream) {
+//             if (isPublish && idx-*lengthLength-2>skip) {
+//                 this->stream->write(digit);
+//             }
+//         }
 
-    if (!this->stream && idx > this->bufferSize) {
-        len = 0; // This will cause the packet to be ignored.
-    }
-    return len;
-}
+//         if (len < this->bufferSize) {
+//             this->buffer[len] = digit;
+//             len++;
+//         }
+//         idx++;
+//     }
 
-boolean PubSubClient::loop() {
+//     if (!this->stream && idx > this->bufferSize) {
+//         len = 0; // This will cause the packet to be ignored.
+//     }
+//     return len;
+// }
+
+boolean ToneIotClient::loop() {
     if (connected()) {
         unsigned long t = millis();
         if ((t - lastInActivity > this->keepAlive*1000UL) || (t - lastOutActivity > this->keepAlive*1000UL)) {
             if (pingOutstanding) {
-                this->_state = MQTT_CONNECTION_TIMEOUT;
+                this->_state = TOIC_CONNECTION_TIMEOUT;
                 _client->stop();
                 return false;
             } else {
-                this->buffer[0] = MQTTPINGREQ;
+                this->buffer[0] = TOICPINGREQ;
                 this->buffer[1] = 0;
                 _client->write(this->buffer,2);
                 lastOutActivity = t;
@@ -699,70 +640,3 @@ boolean PubSubClient::connected() {
     return rc;
 }
 
-PubSubClient& PubSubClient::setServer(uint8_t * ip, uint16_t port) {
-    IPAddress addr(ip[0],ip[1],ip[2],ip[3]);
-    return setServer(addr,port);
-}
-
-PubSubClient& PubSubClient::setServer(IPAddress ip, uint16_t port) {
-    this->ip = ip;
-    this->port = port;
-    this->domain = NULL;
-    return *this;
-}
-
-PubSubClient& PubSubClient::setServer(const char * domain, uint16_t port) {
-    this->domain = domain;
-    this->port = port;
-    return *this;
-}
-
-PubSubClient& PubSubClient::setCallback(MQTT_CALLBACK_SIGNATURE) {
-    this->callback = callback;
-    return *this;
-}
-
-PubSubClient& PubSubClient::setClient(Client& client){
-    this->_client = &client;
-    return *this;
-}
-
-PubSubClient& PubSubClient::setStream(Stream& stream){
-    this->stream = &stream;
-    return *this;
-}
-
-int PubSubClient::state() {
-    return this->_state;
-}
-
-boolean PubSubClient::setBufferSize(uint16_t size) {
-    if (size == 0) {
-        // Cannot set it back to 0
-        return false;
-    }
-    if (this->bufferSize == 0) {
-        this->buffer = (uint8_t*)malloc(size);
-    } else {
-        uint8_t* newBuffer = (uint8_t*)realloc(this->buffer, size);
-        if (newBuffer != NULL) {
-            this->buffer = newBuffer;
-        } else {
-            return false;
-        }
-    }
-    this->bufferSize = size;
-    return (this->buffer != NULL);
-}
-
-uint16_t PubSubClient::getBufferSize() {
-    return this->bufferSize;
-}
-PubSubClient& PubSubClient::setKeepAlive(uint16_t keepAlive) {
-    this->keepAlive = keepAlive;
-    return *this;
-}
-PubSubClient& PubSubClient::setSocketTimeout(uint16_t timeout) {
-    this->socketTimeout = timeout;
-    return *this;
-}
