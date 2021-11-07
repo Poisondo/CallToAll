@@ -47,9 +47,9 @@
 #define TOIC_DISCONNECTED           -1
 #define TOIC_CONNECTED               0
 #define TOIC_CONNECT_BAD_PROTOCOL    1
-#define TOIC_CONNECT_BAD_CLIENT_ID   2
-#define TOIC_CONNECT_UNAVAILABLE     3
-#define TOIC_CONNECT_BAD_CREDENTIALS 4
+//#define TOIC_CONNECT_BAD_CLIENT_ID   2
+//#define TOIC_CONNECT_UNAVAILABLE     3
+//#define TOIC_CONNECT_BAD_CREDENTIALS 4
 #define TOIC_CONNECT_UNAUTHORIZED    5
 
 // #define TOICCONNECT     1 << 4  // Client request to connect to Server
@@ -66,12 +66,10 @@
 #define TOIC_CALLBACK_SIGNATURE void (*callback)(char*, uint8_t*, unsigned int)
 #endif
 
-#define CHECK_STRING_LENGTH(l,s) if (l+2+strnlen(s, this->bufferSize) > this->bufferSize) {_client->stop();return false;}
-
 class ToneIotClient : public Print {
 private:
    Client* _client;
-   uint8_t* buffer;
+   
    uint16_t bufferSize;
    uint16_t keepAlive;
    uint16_t socketTimeout;
@@ -80,22 +78,36 @@ private:
    unsigned long lastInActivity;
    bool pingOutstanding;
    TOIC_CALLBACK_SIGNATURE;
-   // uint32_t readPacket(uint8_t*);
-   boolean readByte(uint8_t * result);
-   boolean readByte(uint8_t * result, uint16_t * index);
-   boolean write(uint8_t header, uint8_t* buf, uint16_t length);
-   uint16_t writeString(const char* string, uint8_t* buf, uint16_t pos);
-   // Build up the header ready to send
-   // Returns the size of the header
-   // Note: the header is built at the end of the first TOIC_MAX_HEADER_SIZE bytes, so will start
-   //       (TOIC_MAX_HEADER_SIZE - <returned size>) bytes into the buffer
-   size_t buildHeader(uint8_t header, uint8_t* buf, uint16_t length);
+   
+   bool readByte(uint8_t* buf);
+   bool readByte(uint8_t* buf, uint16_t* index);
+   bool write(uint8_t* buf, size_t size);
+
    IPAddress ip;
    const char* domain;
    uint16_t port;
    Stream* stream;
    int _state;
 public:
+
+   uint8_t* buffer;
+   /**
+    * @brief struct packet
+    * 
+    */
+   typedef struct 
+   {
+      // header
+      uint8_t    id_destination[8];      ///< id destination
+      uint16_t   len_data;            ///< length buffer data
+      uint16_t   function;            ///< number packet
+      // data
+      uint8_t    pdata[];               ///< pointer buffer data
+   } packet_t;
+   
+   packet_t *packet;
+
+
    ToneIotClient();
    ToneIotClient(Client& client);
    ToneIotClient(Client& client, Stream&);
@@ -121,33 +133,14 @@ public:
    boolean connect(const char* id, const char* token);
    void disconnect();
 
+   bool readPacket(packet_t** packet);
+   bool writePacket(packet_t* packet);
 
-   // boolean publish(const char* topic, const char* payload);
-   // boolean publish(const char* topic, const char* payload, boolean retained);
-   // boolean publish(const char* topic, const uint8_t * payload, unsigned int plength);
-   // boolean publish(const char* topic, const uint8_t * payload, unsigned int plength, boolean retained);
-   // boolean publish_P(const char* topic, const char* payload, boolean retained);
-   // boolean publish_P(const char* topic, const uint8_t * payload, unsigned int plength, boolean retained);
-   // // Start to publish a message.
-   // // This API:
-   // //   beginPublish(...)
-   // //   one or more calls to write(...)
-   // //   endPublish()
-   // // Allows for arbitrarily large payloads to be sent without them having to be copied into
-   // // a new buffer and held in memory at one time
-   // // Returns 1 if the message was started successfully, 0 if there was an error
-   // boolean beginPublish(const char* topic, unsigned int plength, boolean retained);
-   // // Finish off this publish message (started with beginPublish)
-   // // Returns 1 if the packet was sent successfully, 0 if there was an error
-   // int endPublish();
-   // // Write a single byte of payload (only to be used with beginPublish/endPublish)
-   // virtual size_t write(uint8_t);
-   // // Write size bytes from buffer into the payload (only to be used with beginPublish/endPublish)
-   // // Returns the number of bytes written
-   // virtual size_t write(const uint8_t *buffer, size_t size);
-   // boolean subscribe(const char* topic);
-   // boolean subscribe(const char* topic, uint8_t qos);
-   // boolean unsubscribe(const char* topic);
+   virtual size_t write(uint8_t);
+   // Write size bytes from buffer into the payload (only to be used with beginPublish/endPublish)
+   // Returns the number of bytes written
+   virtual size_t write(const uint8_t *buffer, size_t size);
+
    boolean loop();
    boolean connected();
    int state();

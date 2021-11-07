@@ -49,7 +49,7 @@
 #define SerialAT Serial1
 
 // See all AT commands, if wanted
-#define DUMP_AT_COMMANDS
+//#define DUMP_AT_COMMANDS
 
 // Define the serial console for debug prints, if needed
 #define TINY_GSM_DEBUG SerialMon
@@ -69,17 +69,8 @@ const char apn[] = "m.tinkoff.";
 const char gprsUser[] = "";
 const char gprsPass[] = "";
 
-const char ToneServerIP = "";
-
-// MQTT details
-const char *broker = "";
-
-const char *topicLed = "GsmClientTest/led";
-const char *topicInit = "GsmClientTest/init";
-const char *topicLedStatus = "GsmClientTest/ledStatus";
-
 #include <TinyGsmClient.h>
-#include <TOneClient.h>
+#include <ToneIotClient.h>
 
 #ifdef DUMP_AT_COMMANDS
 #include <StreamDebugger.h>
@@ -89,47 +80,43 @@ TinyGsm modem(debugger);
 TinyGsm modem(SerialAT);
 #endif
 TinyGsmClient client(modem);
-PubSubClient mqtt(client);
+ToneIotClient toneiotclient(client);
 
 int ledStatus = LOW;
 
 uint32_t lastReconnectAttempt = 0;
 
-void mqttCallback(char *topic, byte *payload, unsigned int len)
-{
-    SerialMon.print("Message arrived [");
-    SerialMon.print(topic);
-    SerialMon.print("]: ");
-    SerialMon.write(payload, len);
-    SerialMon.println();
+// void mqttCallback(char *topic, byte *payload, unsigned int len)
+// {
+//     SerialMon.print("Message arrived [");
+//     SerialMon.print(topic);
+//     SerialMon.print("]: ");
+//     SerialMon.write(payload, len);
+//     SerialMon.println();
 
-    // Only proceed if incoming message's topic matches
-    if (String(topic) == topicLed) {
-        ledStatus = !ledStatus;
-        digitalWrite(LED_GPIO, ledStatus);
-        mqtt.publish(topicLedStatus, ledStatus ? "1" : "0");
-    }
-}
+//     // Only proceed if incoming message's topic matches
+//     if (String(topic) == topicLed) {
+//         ledStatus = !ledStatus;
+//         digitalWrite(LED_GPIO, ledStatus);
+//         mqtt.publish(topicLedStatus, ledStatus ? "1" : "0");
+//     }
+// }
 
-boolean mqttConnect()
+boolean toneiotConnect()
 {
     SerialMon.print("Connecting to ");
-    SerialMon.print(broker);
 
-    // Connect to MQTT Broker
-    //boolean status = mqtt.connect("GsmClientTest");
-
-    // Or, if you want to authenticate MQTT:
-    boolean status = mqtt.connect("CallToAll", "", "");
+    // Connect to tone iot server
+    boolean status = toneiotclient.connect("GsmClientTest");
 
     if (status == false) {
         SerialMon.println(" fail");
         return false;
     }
     SerialMon.println(" success");
-    mqtt.publish(topicInit, "CallToAll started");
-    mqtt.subscribe(topicLed);
-    return mqtt.connected();
+    // mqtt.publish(topicInit, "CallToAll started");
+    // mqtt.subscribe(topicLed);
+    return toneiotclient.connected();
 }
 
 int8_t modemConnect()
@@ -201,26 +188,37 @@ void setup()
       return;
     }
     // MQTT Broker setup
-    mqtt.setServer(broker, 1883);
-    mqtt.setCallback(mqttCallback);
+    // mqtt.setServer(broker, 1883);
+    // mqtt.setCallback(mqttCallback);
 }
 
 void loop()
 {
 
-    if (!mqtt.connected()) {
+    if (!toneiotclient.connected()) {
         SerialMon.println("=== MQTT NOT CONNECTED ===");
         // Reconnect every 10 seconds
         uint32_t t = millis();
         if (t - lastReconnectAttempt > 10000L) {
             lastReconnectAttempt = t;
-            if (mqttConnect()) {
+            if (toneiotConnect()) {
                 lastReconnectAttempt = 0;
             }
         }
         delay(100);
         return;
     }
+    ToneIotClient::packet_t *packet = NULL;
+    if (toneiotclient.readPacket(&packet) == true){
+        SerialMon.print("-->>readPacket len:");
+        SerialMon.print(packet->len_data);
+        SerialMon.print(" data:");
+        for (int i = 0; i < 20; i++) {
+            SerialMon.print(toneiotclient.buffer[i]);
+            SerialMon.print(" ");
+        }
+        SerialMon.println();
+    }
 
-    mqtt.loop();
+    yield();
 }
