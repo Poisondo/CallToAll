@@ -107,9 +107,9 @@ boolean toneiotConnect()
     SerialMon.print("Connecting to ");
 
     // Connect to tone iot server
-    boolean status = toneiotclient.connect("GsmClientTest");
+    int status = toneiotclient.connect();
 
-    if (status == false) {
+    if (status == -1) {
         SerialMon.println(" fail");
         return false;
     }
@@ -177,6 +177,7 @@ void setup()
 
     delay(10);
 
+    SerialMon.println("Started device!!!");
     SerialMon.println("Wait...");
 
     // Set GSM module baud rate and UART pins
@@ -187,9 +188,9 @@ void setup()
     if (modemConnect() != 0){
       return;
     }
-    // MQTT Broker setup
-    // mqtt.setServer(broker, 1883);
-    // mqtt.setCallback(mqttCallback);
+
+
+    
 }
 
 void loop()
@@ -208,17 +209,32 @@ void loop()
         delay(100);
         return;
     }
-    ToneIotClient::packet_t *packet = NULL;
-    if (toneiotclient.readPacket(&packet) == true){
-        SerialMon.print("-->>readPacket len:");
-        SerialMon.print(packet->len_data);
-        SerialMon.print(" data:");
-        for (int i = 0; i < 20; i++) {
-            SerialMon.print(toneiotclient.buffer[i]);
-            SerialMon.print(" ");
-        }
-        SerialMon.println();
-    }
+
+    //ToneIotClient::packet_t *packet = NULL;
+
+    // if (toneiotclient.readPacket(&packet) == 0){
+    //     SerialMon.print("-->>readPacket:");
+    //     // for (int i = 0; i < packet->length + 10; i++) {
+    //     //     SerialMon.print(toneiotclient.buffer[i]);
+    //     //     SerialMon.print(" ");
+    //     // }
+    //     SerialMon.println();
+    //     SerialMon.print("----->>id:");
+    //     for (int i = 0; i < 8; i++) {
+    //         SerialMon.print(packet->id[i]);
+    //         SerialMon.print(" ");
+    //     }
+    //     SerialMon.print(" len:");
+    //     SerialMon.print(packet->length);
+    //     SerialMon.print(" func:");
+    //     SerialMon.print(packet->function);
+    //     SerialMon.print(" data:");
+    //     for (int i = 0; i < packet->length - 2; i++) {
+    //         SerialMon.print(packet->pdata[i]);
+    //         SerialMon.print(" ");
+    //     }
+    //     SerialMon.println();
+    // }
 
     yield();
 }
