@@ -374,18 +374,17 @@ int8_t ToneIotClient::loop() {
     return false;
 }
 
-int8_t ToneIotClient::sendServer(uint16_t function){
-    return sendServer(function, NULL, 0);
+int8_t ToneIotClient::sendFunctio(uint16_t function){
+    return sendFunctio(function, NULL, 0);
 }
 
-int8_t ToneIotClient::sendServer(uint16_t function, uint8_t* buf, uint16_t len){
+int8_t ToneIotClient::sendFunctio(uint16_t function, uint8_t* buf, uint16_t len){
     memcpy(this->packet->id, this->toneiotsettings.id, 8); 
     this->packet->msgId = ++this->msgId;
     this->packet->function = function;
-    this->packet->length = 2;
     if (buf != NULL) {
         memcpy(this->packet->pdata, buf, len); 
-        this->packet->length += len;
+        this->packet->datalen = len;
     }
     return writePacket(this->packet);
 }
@@ -393,29 +392,38 @@ int8_t ToneIotClient::sendServer(uint16_t function, uint8_t* buf, uint16_t len){
 void ToneIotClient::sendFunctionAck(){
     memcpy(this->packet->id, this->toneiotsettings.id, 8); 
     this->packet->function = TOIC_FUNCTION_SYS_ACK;
-    this->packet->length = 2;
+    this->packet->datalen = 0;
     writePacket(this->packet);
 }
 
 void ToneIotClient::sendFunctionError(uint16_t error){
     memcpy(this->packet->id, this->toneiotsettings.id, 8);
-    this->packet->length = 4; // header + id + keepAlive
+    this->packet->datalen = 2; // header + id + keepAlive
     this->packet->function = TOIC_FUNCTION_SYS_ERROR;
     memcpy(&this->packet->pdata, &error, 2);           // error 2 byte
     writePacket(this->packet);
 }
 
-//TODO make a connection check, wait return system function ACK ERROR
-uint16_t ToneIotClient::waitFunctionSys(){
-    int8_t
-    packet_t* packet;
-    readPacket(packet);
+uint16_t ToneIotClient::waitServerRespons(){
+    if (readPacket(&packet) == -1){ 
+        this->packet->function = TOIC_FUNCTION_SYS_ERROR;
+        this->packet->pdata[0] = 0;
+        this->packet->pdata[1] = 0;
+    }
+    return this->packet->function;
+}
+
+uint16_t ToneIotClient::waitServerRespons(uint16_t* function, uint8_t** buf, uint16_t* len){
+    waitServerRespons();
+    *function = this->packet->function;
+    *buf = this->packet->pdata;
+    *len = this->packet->datalen;
+    return this->packet->function;
 }
 
 // last error code
 uint16_t ToneIotClient::getErrorCode(){
-    //TODO make a connection check, take the error code from the package
-
+    return (this->packet->pdata[0] << 8) | this->packet->pdata[1];
 }
 
 // =============================================== private =================================
@@ -428,7 +436,9 @@ uint16_t ToneIotClient::getErrorCode(){
  */
 int8_t ToneIotClient::readByte(uint8_t* buf) {
 
-   uint32_t previousMillis = millis();
+   uint32_t previousMillis = 0;
+   if (!this->client->connected()) return -1;
+   previousMillis = millis();
    while(!this->client->available()) {
      yield();
      uint32_t currentMillis = millis();
@@ -448,14 +458,12 @@ int8_t ToneIotClient::readByte(uint8_t* buf) {
  * @return int8_t = 0 - ok; -1 - error
  */
 int8_t ToneIotClient::readByte(uint8_t* buf, uint16_t* index){
-
-  uint16_t current_index = *index;
-  uint8_t* write_address = &(buf[current_index]);
-  if(readByte(write_address)){
-    *index = current_index + 1;
-    return -1;
-  }
-  return 0;
+    int8_t ret = 0;
+    uint16_t current_index = *index;
+    uint8_t* write_address = &(buf[current_index]);
+    ret = readByte(write_address);
+    if (ret == 0) *index = current_index + 1;
+    return ret;
 }
 
 /**
@@ -470,20 +478,20 @@ int8_t ToneIotClient::readPacket(packet_t** packet) {
 
     *packet = NULL;
 
-    while (len < 12){
-        if(!readByte(this->buffer, &len)) return -1;
+    while (len < 14){
+        if(readByte(this->buffer, &len) == -1) return -1;
     }
 
     // protocol data - 0-65535 byte
-    while (len < this->packet->length + 12) {
-        if(!readByte(this->buffer, &len)) return -1;
+    while (len < this->packet->datalen + 14) {
+        if(readByte(this->buffer, &len) == -1) return -1;
     }
 
     
-    // verification id device
+    // check id device
     if (memcmp(this->toneiotsettings.id, this->packet->id, 8)) return 1;
 
-    // verification msgId
+    // check msgId
     if (this->msgId <= this->packet->msgId) {
         if (this->msgId == this->packet->msgId 
             && this->packet->function == TOIC_FUNCTION_SYS_ACK
@@ -506,6 +514,7 @@ int8_t ToneIotClient::readPacket(packet_t** packet) {
  */
 int8_t ToneIotClient::write(uint8_t *buf, size_t size) {
     
+    if (!this->client->connected()) return -1;
     lastOutActivity = millis();
     if (this->client->write(buf, size) != size) return -1;
     return 0;
@@ -520,10 +529,8 @@ int8_t ToneIotClient::write(uint8_t *buf, size_t size) {
 int8_t ToneIotClient::writePacket(packet_t* packet) {
 
     uint8_t* buf = (uint8_t*) packet;
-    uint16_t len = this->packet->length + 12;
-    // return write(buf, len);
-    if (write(buf, len) != len) return -1;
-    return 0;
+    uint16_t len = this->packet->datalen + 14;
+    return write(buf, len);
 }
 
 /**
@@ -609,28 +616,53 @@ int8_t ToneIotClient::sendFunctionInit(){
     this->packet->msgId = 0;   
     this->packet->function = TOIC_FUNCTION_SYS_INIT;
 
-    this->packet->pdata[0] = 0;   // header 1 byte
+    struct
+    {
+        uint8_t  header;         // header 1 byte
+        uint32_t salt;           // salt 1 byte
+        uint8_t  id[8];          // id 8 bytes
+        uint8_t  deviceType;     // device type 1 byte
+        uint8_t  versionMajor;   // major version 1 byte
+        uint8_t  versionMinor;   // minor version 1 byte
+        uint8_t  date[12];       // compilation date 11 byte
+        uint16_t keepAlive;     // keepAlive 2 byte
+    } headerdata = {
+        .header = 0,
+        .deviceType = TONE_DEVICE_TYPE,
+        .versionMajor = TONE_VERSION_MAJOR,
+        .versionMinor = TONE_VERSION_MINOR,
+        .keepAlive = this->keepAlive
+    };
+    
+
+    //this->packet->pdata[0] = 0;   // header 1 byte
     memcpy(&this->packet->pdata[1], this->toneiotsettings.id, 8);   // id 8 bytes
-    memcpy(&this->packet->pdata[9], &this->keepAlive, 2);           // keepAlive 2 byte
+    //this->packet->pdata[9] = TONE_DEVICE_TYPE;   // device type 1 byte
+    //this->packet->pdata[10] = TONE_VERSION_MAJOR;   // major version 1 byte
+    //this->packet->pdata[11] = TONE_VERSION_MINOR;   // minor version 1 byte
+    memcpy(&this->packet->pdata[12], __DATE__, 11);    // DATE 11 byte
+    //this->packet->pdata[23] = '\0';
+    //memcpy(&this->packet->pdata[24], &this->keepAlive, 2);           // keepAlive 2 byte
 
-    this->packet->length = 11; // header + id + keepAlive
+    this->packet->datalen = sizeof(headerdata); // header + id + TONE_DEVICE_TYPE + TONE_VERSION_MAJOR + TONE_VERSION_MINOR + DATE + keepAlive
+    memcpy(this->packet->pdata, &headerdata, this->packet->datalen);
 
-    // packet number function
+    // 26 bytes is the beginning of the supported functions
     while(itemFunction != NULL) {
-        if (this->packet->length > TOIC_MAX_PACKET_SIZE - 20) break;
-        memcpy(&this->packet->pdata[this->packet->length], &itemFunction->function, 2);           // add number function 2 byte
+        if (this->packet->datalen > TOIC_MAX_PACKET_SIZE - 20) break;
+        memcpy(&this->packet->pdata[this->packet->datalen], &itemFunction->function, 2);           // add number function 2 byte
         itemFunction = (itemFunction_t*)itemFunction->nextfunction;
-        this->packet->length += 2;
+        this->packet->datalen += 2;
     }
 
     //TODO Encrypt the data packet
     //TODO this->packet->length will change after encryption
 
-    this->packet->length += 2; // + 2 bytes function
-
     if (writePacket(this->packet)) return -1;
 
     //TODO wait init package, parse the init function, enable function
+
+    if (waitServerRespons() != TOIC_FUNCTION_SYS_INIT) return -1;
 
     // lastInActivity = lastOutActivity = millis();
 
@@ -661,10 +693,10 @@ int8_t ToneIotClient::sendFunctionInit(){
 }
 
 int8_t ToneIotClient::sendFunctionKeepAlive(){
-    sendServer(TOIC_FUNCTION_SYS_KEEPALIVE);
+    sendFunctio(TOIC_FUNCTION_SYS_KEEPALIVE);
 }
 
 void ToneIotClient::sendFunctionDisconnect(uint16_t code){
-    sendServer(TOIC_FUNCTION_SYS_DISCONNECT, (uint8_t*)&code, 2);
-    waitFunctionSys();
+    sendFunctio(TOIC_FUNCTION_SYS_DISCONNECT, (uint8_t*)&code, 2);
+    waitServerRespons();
 }

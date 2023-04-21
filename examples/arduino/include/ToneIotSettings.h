@@ -12,7 +12,14 @@
 #define TONE_CONNECT_PORT 40001 ///< tcp port for protocol v1
 
 /**
- * @brief version protocol
+ * @brief device type
  * 
  */
-#define TONE_PROTOCOL_VERSION 1
+#define TONE_DEVICE_TYPE 1 // CallToAll
+
+/**
+ * @brief device version
+ * 
+ */
+#define TONE_VERSION_MAJOR 0
+#define TONE_VERSION_MINOR 1

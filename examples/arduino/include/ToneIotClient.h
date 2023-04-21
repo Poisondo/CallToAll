@@ -87,13 +87,14 @@ public:
    TOIC_STATE getState();
 
    int8_t loop();
-   int8_t sendServer(uint16_t function);
-   int8_t sendServer(uint16_t function, uint8_t* buf, uint16_t len);
+   int8_t sendFunctio(uint16_t function);
+   int8_t sendFunctio(uint16_t function, uint8_t* buf, uint16_t len);
 
    void sendFunctionAck();
    void sendFunctionError(uint16_t error);
 
-   uint16_t waitFunctionSys();
+   uint16_t waitServerRespons();
+   uint16_t waitServerRespons(uint16_t* function, uint8_t** buf, uint16_t* len);
    uint16_t getErrorCode();
 
 private:
@@ -103,8 +104,8 @@ private:
       // header
       uint8_t    id[8];    ///< id
       uint16_t   msgId;    ///< packet counter
-      uint16_t   length;   ///< length 2 bytes function + bytes data
       uint16_t   function; ///< function number packet
+      uint16_t   datalen;  ///< length bytes data
       // data
       uint8_t    pdata[];  ///< pointer buffer data
    } packet_t;
